@@ -9,6 +9,7 @@ services:
     rootDir: server
     buildCommand: npm install
     startCommand: npm start
+    healthCheckPath: /
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false # set this secret in the Render dashboard, not in git
