@@ -91,11 +91,16 @@ const SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
+    venue: {
+      type: "string",
+      description:
+        "If the WHOLE document/schedule is for a single venue (named in a header, title, or logo), the venue name. '' if the document covers multiple venues or none is stated.",
+    },
     gigs: { type: "array", items: GIG_ITEM, description: "One entry per set performed by our artist." },
     unreadable: { type: "boolean", description: "True if the file isn't a booking/roster or can't be read." },
     note: { type: "string", description: "If gigs is empty, briefly say why (e.g. 'artist not on this bill')." },
   },
-  required: ["gigs", "unreadable", "note"],
+  required: ["venue", "gigs", "unreadable", "note"],
 };
 
 function buildPrompt(today) {
@@ -107,6 +112,8 @@ Extract ONLY the set(s) performed by the artist we represent, who appears under 
 - IGNORE every other act on the bill.
 - The same artist may appear more than once (multiple days, stages, or rooms). Return one entry per distinct set.
 - If none of these names appear, return "gigs": [] and explain in "note".
+
+Venue: if the entire document is one venue's schedule (its name is in a header, title, or logo), put that venue name in the TOP-LEVEL "venue" field — even if individual rows don't repeat it. Also fill each set's own "venue" when a row states a different one.
 
 For each matched set:
 - date → strict YYYY-MM-DD. Resolve relative dates ("this Friday") against today's date below. If the year is missing, pick the nearest sensible upcoming date.
@@ -139,9 +146,10 @@ function client() {
   return new Anthropic({ apiKey });
 }
 
-function normalize(item) {
-  // Snap the read venue to a known one so its tax applies; unknown → "Other".
-  const matched = matchVenue(item.venue);
+function normalize(item, forcedVenue) {
+  // A document-level venue (forcedVenue) applies to every shift in the file;
+  // otherwise snap this row's own venue to a known one. Unknown → "Other".
+  const matched = forcedVenue || matchVenue(item.venue);
   const venue = matched || "Other";
   // Fee is our fixed hourly rate × set length, less venue tax — not the bill's.
   const fee = feeForDuration(item.startTime, item.endTime, taxForVenue(venue)) || item.fee || "";
@@ -193,6 +201,9 @@ export async function parseScreenshot(file) {
     result = { gigs: [], unreadable: true, note: "Could not parse the model response." };
   }
 
+  // A venue named for the whole document is applied to every shift in it.
+  const docVenue = matchVenue(result.venue);
+
   const gigs = Array.isArray(result.gigs) ? result.gigs : [];
   if (gigs.length === 0) {
     const reason = result.unreadable
@@ -206,5 +217,5 @@ export async function parseScreenshot(file) {
       },
     ];
   }
-  return gigs.map(normalize);
+  return gigs.map((g) => normalize(g, docVenue));
 }

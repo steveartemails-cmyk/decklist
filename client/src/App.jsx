@@ -22,6 +22,7 @@ export default function App() {
   const [parseError, setParseError] = useState("");
   const [selected, setSelected] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [addingAll, setAddingAll] = useState(false);
 
   useEffect(() => {
     api
@@ -37,7 +38,10 @@ export default function App() {
     setParseError("");
     try {
       const { drafts: newDrafts } = await api.parseScreenshots(files);
-      setDrafts((d) => [...newDrafts, ...d]);
+      // Give each draft a stable client id so saving/editing one never touches
+      // its siblings (shifts from the same roster share a screenshotUrl).
+      const withIds = newDrafts.map((d) => ({ ...d, _id: crypto.randomUUID() }));
+      setDrafts((d) => [...withIds, ...d]);
     } catch (e) {
       setParseError(e.message);
     } finally {
@@ -45,10 +49,54 @@ export default function App() {
     }
   }
 
-  async function saveDraft(draft, opts) {
-    const created = await api.createGig(draft, opts); // throws on conflict for the card to handle
-    setGigs((g) => [...g, created]);
-    setDrafts((d) => d.filter((x) => x !== draft && x.screenshotUrl !== draft.screenshotUrl));
+  // Edit a draft in place (clears any stale conflict/error so a normal save can
+  // be retried after the user changes the time/venue).
+  const updateDraft = (id, updated) =>
+    setDrafts((ds) =>
+      ds.map((d) => (d._id === id ? { ...updated, _id: id, _conflicts: undefined, _error: undefined } : d)),
+    );
+
+  const removeDraft = (id) => setDrafts((ds) => ds.filter((d) => d._id !== id));
+
+  // Save one draft. Removes just that card on success; on conflict it stays with
+  // its clashes flagged so the user can "Save anyway". Returns true if saved.
+  async function saveDraftObj(draft, override) {
+    const { _id, _conflicts, _error, _saving, ...gig } = draft;
+    setDrafts((ds) => ds.map((d) => (d._id === _id ? { ...d, _saving: true, _error: undefined } : d)));
+    try {
+      const created = await api.createGig(gig, { override });
+      setGigs((g) => [...g, created]);
+      setDrafts((ds) => ds.filter((d) => d._id !== _id));
+      return true;
+    } catch (err) {
+      setDrafts((ds) =>
+        ds.map((d) =>
+          d._id === _id
+            ? {
+                ...d,
+                _saving: false,
+                _conflicts: err.conflict ? err.conflicts : undefined,
+                _error: err.conflict ? undefined : err.message || "Could not save.",
+              }
+            : d,
+        ),
+      );
+      return false;
+    }
+  }
+
+  // Add every complete draft to the calendar, one at a time so conflicts within
+  // the same roster are caught. Conflicting ones stay behind, flagged.
+  async function addAll() {
+    setAddingAll(true);
+    try {
+      for (const draft of [...drafts]) {
+        if (!draft.date || !draft.startTime || !draft.endTime) continue; // skip "no match"/incomplete
+        await saveDraftObj(draft, false);
+      }
+    } finally {
+      setAddingAll(false);
+    }
   }
 
   async function saveExisting(id, gig, opts) {
@@ -110,14 +158,31 @@ export default function App() {
             <h2 className="text-sm font-medium text-[#c8c8d8]">
               Review {drafts.length} read{drafts.length > 1 ? "s" : ""} before saving
             </h2>
-            {drafts.map((draft, i) => (
+            {drafts.map((draft) => (
               <ConfirmationCard
-                key={draft.screenshotUrl || i}
+                key={draft._id}
                 draft={draft}
-                onSave={saveDraft}
-                onDiscard={() => setDrafts((d) => d.filter((x) => x !== draft))}
+                onChange={(updated) => updateDraft(draft._id, updated)}
+                onSave={(override) => saveDraftObj(draft, override)}
+                onDiscard={() => removeDraft(draft._id)}
+                busy={addingAll}
               />
             ))}
+            {drafts.length > 1 && (
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  onClick={addAll}
+                  disabled={addingAll}
+                  className="rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 px-4 py-2 text-sm font-medium"
+                  type="button"
+                >
+                  {addingAll ? "Adding all…" : `Add all ${drafts.length} to calendar`}
+                </button>
+                <span className="text-xs text-[#8a8aa0]">
+                  Conflicting shifts stay here flagged — review and “Save anyway” individually.
+                </span>
+              </div>
+            )}
           </div>
         )}
       </section>

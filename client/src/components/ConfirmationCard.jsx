@@ -1,4 +1,3 @@
-import { useState } from "react";
 import GigForm from "./GigForm.jsx";
 import { mediaUrl, isPdf } from "../config.js";
 
@@ -8,33 +7,14 @@ const confidenceStyles = {
   low: "bg-rose-500/15 text-rose-300 border-rose-500/30",
 };
 
-// One editable draft read from a screenshot. The DJ confirms (and edits) before
-// it's saved. Shows a confidence flag and the source screenshot, and surfaces
-// any double-booking the server reported.
-export default function ConfirmationCard({ draft, onSave, onDiscard }) {
-  const [gig, setGig] = useState(draft);
-  const [conflicts, setConflicts] = useState([]);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
+// One editable draft read from a screenshot/roster. Fully controlled — the draft
+// (including any conflict/error/saving flags) lives in the parent so "Add all"
+// can save every card with the user's edits. The DJ confirms before it's saved.
+export default function ConfirmationCard({ draft, onChange, onSave, onDiscard, busy }) {
   const confidence = draft.confidence || "low";
-  const incomplete = !gig.date || !gig.startTime || !gig.endTime;
-
-  async function attemptSave(override) {
-    setSaving(true);
-    setError("");
-    try {
-      await onSave(gig, { override });
-    } catch (err) {
-      if (err.conflict) {
-        setConflicts(err.conflicts);
-      } else {
-        setError(err.message || "Could not save.");
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
+  const incomplete = !draft.date || !draft.startTime || !draft.endTime;
+  const conflicts = draft._conflicts || [];
+  const saving = draft._saving;
 
   return (
     <div className="rounded-xl border border-[#2a2a3a] bg-[#0f0f17] p-4">
@@ -51,7 +31,8 @@ export default function ConfirmationCard({ draft, onSave, onDiscard }) {
         </div>
         <button
           onClick={onDiscard}
-          className="text-xs text-[#8a8aa0] hover:text-rose-300"
+          disabled={busy}
+          className="text-xs text-[#8a8aa0] hover:text-rose-300 disabled:opacity-40"
           type="button"
         >
           Discard
@@ -59,7 +40,7 @@ export default function ConfirmationCard({ draft, onSave, onDiscard }) {
       </div>
 
       <div className="grid md:grid-cols-[1fr_180px] gap-4">
-        <GigForm value={gig} onChange={setGig} />
+        <GigForm value={draft} onChange={onChange} />
         {draft.screenshotUrl &&
           (isPdf(draft.screenshotUrl) ? (
             <a
@@ -95,13 +76,13 @@ export default function ConfirmationCard({ draft, onSave, onDiscard }) {
         </div>
       )}
 
-      {error && <div className="mt-3 text-sm text-rose-300">{error}</div>}
+      {draft._error && <div className="mt-3 text-sm text-rose-300">{draft._error}</div>}
 
       <div className="mt-4 flex items-center gap-2">
         {conflicts.length === 0 ? (
           <button
-            onClick={() => attemptSave(false)}
-            disabled={saving || incomplete}
+            onClick={() => onSave(false)}
+            disabled={saving || busy || incomplete}
             className="rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 px-4 py-2 text-sm font-medium"
             type="button"
           >
@@ -109,9 +90,9 @@ export default function ConfirmationCard({ draft, onSave, onDiscard }) {
           </button>
         ) : (
           <button
-            onClick={() => attemptSave(true)}
-            disabled={saving}
-            className="rounded-md bg-rose-600 hover:bg-rose-500 px-4 py-2 text-sm font-medium"
+            onClick={() => onSave(true)}
+            disabled={saving || busy}
+            className="rounded-md bg-rose-600 hover:bg-rose-500 disabled:opacity-40 px-4 py-2 text-sm font-medium"
             type="button"
           >
             {saving ? "Saving…" : "Save anyway"}
