@@ -1,7 +1,7 @@
 import { useState } from "react";
 import GigForm from "./GigForm.jsx";
 import { downloadICS } from "../ics.js";
-import { mediaUrl } from "../config.js";
+import { mediaUrl, isPdf } from "../config.js";
 
 // Slide-over detail panel for an existing gig: view, edit (with conflict
 // re-check), export a single .ics, or delete. Shows the source screenshot.
@@ -81,16 +81,27 @@ export default function GigDetail({ gig, onClose, onSave, onDelete }) {
         )}
         {error && <div className="mt-3 text-sm text-rose-300">{error}</div>}
 
-        {gig.screenshotUrl && !editing && (
-          <a href={mediaUrl(gig.screenshotUrl)} target="_blank" rel="noreferrer" className="block mt-4">
-            <img
-              src={mediaUrl(gig.screenshotUrl)}
-              alt="source screenshot"
-              className="rounded-lg border border-[#2a2a3a] w-full"
-            />
-            <div className="text-[10px] text-[#8a8aa0] mt-1 text-center">source screenshot</div>
-          </a>
-        )}
+        {gig.screenshotUrl &&
+          !editing &&
+          (isPdf(gig.screenshotUrl) ? (
+            <a
+              href={mediaUrl(gig.screenshotUrl)}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center rounded-lg border border-[#2a2a3a] bg-[#15151f] p-4 mt-4 text-sm text-indigo-300 hover:border-indigo-500"
+            >
+              📄 open source PDF
+            </a>
+          ) : (
+            <a href={mediaUrl(gig.screenshotUrl)} target="_blank" rel="noreferrer" className="block mt-4">
+              <img
+                src={mediaUrl(gig.screenshotUrl)}
+                alt="source screenshot"
+                className="rounded-lg border border-[#2a2a3a] w-full"
+              />
+              <div className="text-[10px] text-[#8a8aa0] mt-1 text-center">source screenshot</div>
+            </a>
+          ))}
 
         <div className="mt-6 flex flex-wrap gap-2">
           {editing ? (

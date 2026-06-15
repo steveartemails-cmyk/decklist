@@ -7,7 +7,9 @@ export default function UploadDropzone({ onFiles, busy }) {
   const [dragging, setDragging] = useState(false);
 
   const pick = (fileList) => {
-    const files = [...fileList].filter((f) => f.type.startsWith("image/"));
+    const files = [...fileList].filter(
+      (f) => f.type.startsWith("image/") || f.type === "application/pdf",
+    );
     if (files.length) onFiles(files);
   };
 
@@ -34,17 +36,17 @@ export default function UploadDropzone({ onFiles, busy }) {
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,application/pdf"
         multiple
         hidden
         onChange={(e) => pick(e.target.files)}
       />
       <div className="text-2xl mb-1">{busy ? "⏳" : "🎛️"}</div>
       <div className="text-sm font-medium">
-        {busy ? "Reading your screenshots…" : "Drop booking screenshots here"}
+        {busy ? "Reading your bookings…" : "Drop booking screenshots or roster PDFs here"}
       </div>
       <div className="text-xs text-[#8a8aa0] mt-1">
-        DMs, flyers, emails, texts — Claude reads the date, venue, time &amp; fee
+        DMs, flyers, emails, texts, full lineups — Claude pulls out your sets only
       </div>
     </div>
   );

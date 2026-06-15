@@ -75,8 +75,10 @@ app.post("/api/parse", upload.array("screenshots", 20), async (req, res) => {
     if (!files.length) return res.status(400).json({ error: "no screenshots uploaded" });
     const drafts = [];
     for (const file of files) {
-      const draft = await parseScreenshot(file);
-      drafts.push({ ...draft, screenshotUrl: `/uploads/${file.filename}` });
+      const matches = await parseScreenshot(file); // array — a roster may yield several
+      for (const draft of matches) {
+        drafts.push({ ...draft, screenshotUrl: `/uploads/${file.filename}` });
+      }
     }
     res.json({ drafts });
   } catch (err) {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import GigForm from "./GigForm.jsx";
-import { mediaUrl } from "../config.js";
+import { mediaUrl, isPdf } from "../config.js";
 
 const confidenceStyles = {
   high: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
@@ -39,9 +39,16 @@ export default function ConfirmationCard({ draft, onSave, onDiscard }) {
   return (
     <div className="rounded-xl border border-[#2a2a3a] bg-[#0f0f17] p-4">
       <div className="flex items-start justify-between mb-3 gap-3">
-        <span className={"text-xs px-2 py-0.5 rounded-full border " + confidenceStyles[confidence]}>
-          {draft.unreadable ? "couldn't read" : `${confidence} confidence`}
-        </span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={"text-xs px-2 py-0.5 rounded-full border " + confidenceStyles[confidence]}>
+            {draft.unreadable ? "no match" : `${confidence} confidence`}
+          </span>
+          {draft.matchedName && (
+            <span className="text-xs px-2 py-0.5 rounded-full border border-indigo-500/40 bg-indigo-500/15 text-indigo-200">
+              matched: {draft.matchedName}
+            </span>
+          )}
+        </div>
         <button
           onClick={onDiscard}
           className="text-xs text-[#8a8aa0] hover:text-rose-300"
@@ -53,16 +60,26 @@ export default function ConfirmationCard({ draft, onSave, onDiscard }) {
 
       <div className="grid md:grid-cols-[1fr_180px] gap-4">
         <GigForm value={gig} onChange={setGig} />
-        {draft.screenshotUrl && (
-          <a href={mediaUrl(draft.screenshotUrl)} target="_blank" rel="noreferrer" className="block">
-            <img
-              src={mediaUrl(draft.screenshotUrl)}
-              alt="source screenshot"
-              className="rounded-lg border border-[#2a2a3a] w-full object-cover max-h-64"
-            />
-            <div className="text-[10px] text-[#8a8aa0] mt-1 text-center">source screenshot</div>
-          </a>
-        )}
+        {draft.screenshotUrl &&
+          (isPdf(draft.screenshotUrl) ? (
+            <a
+              href={mediaUrl(draft.screenshotUrl)}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center rounded-lg border border-[#2a2a3a] bg-[#15151f] p-4 text-sm text-indigo-300 hover:border-indigo-500"
+            >
+              📄 open source PDF
+            </a>
+          ) : (
+            <a href={mediaUrl(draft.screenshotUrl)} target="_blank" rel="noreferrer" className="block">
+              <img
+                src={mediaUrl(draft.screenshotUrl)}
+                alt="source screenshot"
+                className="rounded-lg border border-[#2a2a3a] w-full object-cover max-h-64"
+              />
+              <div className="text-[10px] text-[#8a8aa0] mt-1 text-center">source screenshot</div>
+            </a>
+          ))}
       </div>
 
       {conflicts.length > 0 && (

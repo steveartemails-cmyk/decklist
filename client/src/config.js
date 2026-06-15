@@ -13,3 +13,6 @@ export const apiUrl = (path) => `${API_BASE}${path}`;
 // Resolve a server-relative media path (e.g. "/uploads/x.png") to the backend.
 export const mediaUrl = (path) =>
   path && path.startsWith("/") ? `${API_BASE}${path}` : path;
+
+// Source files can be images or PDFs; PDFs can't render in an <img>.
+export const isPdf = (path) => /\.pdf($|\?)/i.test(path || "");
