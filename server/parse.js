@@ -148,9 +148,10 @@ function client() {
 
 function normalize(item, forcedVenue) {
   // A document-level venue (forcedVenue) applies to every shift in the file;
-  // otherwise snap this row's own venue to a known one. Unknown → "Other".
+  // otherwise snap this row's own venue to a known one. Unknown → left BLANK so
+  // the user picks it (which then propagates to the rest of the roster).
   const matched = forcedVenue || matchVenue(item.venue);
-  const venue = matched || "Other";
+  const venue = matched || "";
   // Fee is our fixed hourly rate × set length, less venue tax — not the bill's.
   const fee = feeForDuration(item.startTime, item.endTime, taxForVenue(venue)) || item.fee || "";
   // Don't lose an unrecognised venue name — keep it in the notes.

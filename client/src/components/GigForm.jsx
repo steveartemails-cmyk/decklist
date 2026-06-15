@@ -1,4 +1,4 @@
-import { feeForDuration, durationHours, taxForVenue, RATE_CURRENCY, VENUES } from "../config.js";
+import { feeForDuration, durationHours, taxForVenue, canonicalVenue, RATE_CURRENCY, VENUES } from "../config.js";
 
 // A controlled editor for a gig's fields. Reused by the confirmation cards (when
 // reviewing a screenshot read) and by the edit panel.
@@ -19,6 +19,9 @@ export default function GigForm({ value, onChange }) {
     onChange({ ...next, fee: fee || next.fee || "", currency: value.currency || RATE_CURRENCY });
   };
 
+  // Snap a typed venue to the proper-cased known name once it fully matches.
+  const setVenue = (raw) => reprice({ venue: canonicalVenue(raw) || raw });
+
   const hours = durationHours(value.startTime, value.endTime);
   const tax = taxForVenue(value.venue);
 
@@ -35,21 +38,21 @@ export default function GigForm({ value, onChange }) {
       </div>
       <div className="col-span-2">
         <label className={label}>Venue</label>
-        <select
+        <input
+          list="decklist-venues"
           className={field}
-          value={VENUES.some((v) => v.name === value.venue) ? value.venue : ""}
-          onChange={(e) => reprice({ venue: e.target.value })}
-        >
-          <option value="" disabled>
-            Select venue…
-          </option>
+          value={value.venue || ""}
+          onChange={(e) => setVenue(e.target.value)}
+          placeholder="Type to search… (e.g. Seen) — leave blank if unknown"
+          autoComplete="off"
+        />
+        <datalist id="decklist-venues">
           {VENUES.map((v) => (
             <option key={v.name} value={v.name}>
-              {v.name}
-              {v.tax ? ` (−${v.tax * 100}% tax)` : ""}
+              {v.tax ? `−${v.tax * 100}% tax` : "no tax"}
             </option>
           ))}
-        </select>
+        </datalist>
       </div>
       <div>
         <label className={label}>Date</label>

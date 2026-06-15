@@ -32,9 +32,16 @@ export const VENUES = [
   { name: "Other 3%", tax: 0.03 },
 ];
 
+// The proper-cased known venue name matching `input` (case-insensitive), or null
+// if it isn't a complete known venue. Used for typeahead snapping and tax lookup.
+export function canonicalVenue(input) {
+  const q = String(input || "").trim().toLowerCase();
+  return VENUES.find((x) => x.name.toLowerCase() === q)?.name ?? null;
+}
+
 export function taxForVenue(venue) {
-  const v = VENUES.find((x) => x.name === venue);
-  return v ? v.tax : 0;
+  const name = canonicalVenue(venue);
+  return name ? VENUES.find((x) => x.name === name).tax : 0;
 }
 
 // Set length in hours (handles midnight-crossing sets). 0 if times missing.

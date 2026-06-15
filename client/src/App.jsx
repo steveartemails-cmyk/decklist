@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import * as api from "./api.js";
 import { conflictingIds, addMonths, addDays, startOfWeek } from "./schedule.js";
+import { feeForDuration, canonicalVenue, RATE_CURRENCY } from "./config.js";
 import { downloadICS } from "./ics.js";
 import UploadDropzone from "./components/UploadDropzone.jsx";
 import ConfirmationCard from "./components/ConfirmationCard.jsx";
@@ -50,11 +51,32 @@ export default function App() {
   }
 
   // Edit a draft in place (clears any stale conflict/error so a normal save can
-  // be retried after the user changes the time/venue).
+  // be retried after the user changes the time/venue). When the user sets a
+  // *complete* known venue on one shift, apply it to every other shift from the
+  // same roster (same source file) and re-derive their fees for that venue's tax.
   const updateDraft = (id, updated) =>
-    setDrafts((ds) =>
-      ds.map((d) => (d._id === id ? { ...updated, _id: id, _conflicts: undefined, _error: undefined } : d)),
-    );
+    setDrafts((ds) => {
+      const prev = ds.find((d) => d._id === id);
+      const canon = canonicalVenue(updated.venue); // null until a full venue name is entered
+      const venueChanged = prev && (updated.venue || "") !== (prev.venue || "");
+      const propagate = Boolean(canon) && venueChanged && Boolean(prev?.screenshotUrl);
+      return ds.map((d) => {
+        if (d._id === id) {
+          return { ...updated, _id: id, _conflicts: undefined, _error: undefined };
+        }
+        if (propagate && d.screenshotUrl === prev.screenshotUrl) {
+          return {
+            ...d,
+            venue: canon,
+            fee: feeForDuration(d.startTime, d.endTime, canon) || d.fee || "",
+            currency: d.currency || RATE_CURRENCY,
+            _conflicts: undefined,
+            _error: undefined,
+          };
+        }
+        return d;
+      });
+    });
 
   const removeDraft = (id) => setDrafts((ds) => ds.filter((d) => d._id !== id));
 
