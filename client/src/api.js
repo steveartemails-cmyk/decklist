@@ -37,11 +37,29 @@ export const updateGig = (id, gig, { override = false } = {}) =>
 
 export const deleteGig = (id) => request("DELETE", `/api/gigs/${id}`);
 
-// Upload screenshots for extraction. Returns { drafts: [...] }.
+// Upload screenshots/PDFs for extraction. Returns { drafts: [...] }.
+// Aborts with a friendly message instead of hanging forever — useful when the
+// free backend is waking from sleep or a large PDF is slow to read.
 export async function parseScreenshots(files) {
   const form = new FormData();
   for (const file of files) form.append("screenshots", file);
-  const res = await fetch(apiUrl("/api/parse"), { method: "POST", body: form });
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 175000); // ~3 min ceiling
+  let res;
+  try {
+    res = await fetch(apiUrl("/api/parse"), { method: "POST", body: form, signal: ctrl.signal });
+  } catch (e) {
+    if (e.name === "AbortError") {
+      throw new Error(
+        "Timed out reading the file. The server may have been asleep, or the PDF is large — wait a few seconds and try again (it's usually fast the second time).",
+      );
+    }
+    throw new Error("Couldn't reach the server — it may be waking up. Try again in a moment.");
+  } finally {
+    clearTimeout(timer);
+  }
+
   if (!res.ok) {
     let detail = "";
     try {
@@ -49,7 +67,7 @@ export async function parseScreenshots(files) {
     } catch {
       /* ignore */
     }
-    throw new Error(detail || "Could not read the screenshot(s).");
+    throw new Error(detail || "Could not read the file(s).");
   }
   return res.json();
 }

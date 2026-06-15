@@ -39,34 +39,54 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 15 * 1024 * 1024 } });
 
-app.get("/api/gigs", (_req, res) => {
-  res.json(db.listGigs());
-});
-
-app.post("/api/gigs", (req, res) => {
-  const gig = req.body;
-  const conflicts = findConflicts(gig, db.listGigs());
-  if (conflicts.length && req.query.override !== "1") {
-    return res.status(409).json({ error: "conflict", conflicts });
+app.get("/api/gigs", async (_req, res) => {
+  try {
+    res.json(await db.listGigs());
+  } catch (err) {
+    console.error("listGigs failed:", err);
+    res.status(500).json({ error: "could not load gigs" });
   }
-  res.status(201).json(db.createGig(gig));
 });
 
-app.put("/api/gigs/:id", (req, res) => {
-  const gig = { ...req.body, id: req.params.id };
-  const conflicts = findConflicts(gig, db.listGigs());
-  if (conflicts.length && req.query.override !== "1") {
-    return res.status(409).json({ error: "conflict", conflicts });
+app.post("/api/gigs", async (req, res) => {
+  try {
+    const gig = req.body;
+    const conflicts = findConflicts(gig, await db.listGigs());
+    if (conflicts.length && req.query.override !== "1") {
+      return res.status(409).json({ error: "conflict", conflicts });
+    }
+    res.status(201).json(await db.createGig(gig));
+  } catch (err) {
+    console.error("createGig failed:", err);
+    res.status(500).json({ error: "could not save gig" });
   }
-  const updated = db.updateGig(req.params.id, req.body);
-  if (!updated) return res.status(404).json({ error: "not found" });
-  res.json(updated);
 });
 
-app.delete("/api/gigs/:id", (req, res) => {
-  const ok = db.deleteGig(req.params.id);
-  if (!ok) return res.status(404).json({ error: "not found" });
-  res.status(204).end();
+app.put("/api/gigs/:id", async (req, res) => {
+  try {
+    const gig = { ...req.body, id: req.params.id };
+    const conflicts = findConflicts(gig, await db.listGigs());
+    if (conflicts.length && req.query.override !== "1") {
+      return res.status(409).json({ error: "conflict", conflicts });
+    }
+    const updated = await db.updateGig(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ error: "not found" });
+    res.json(updated);
+  } catch (err) {
+    console.error("updateGig failed:", err);
+    res.status(500).json({ error: "could not update gig" });
+  }
+});
+
+app.delete("/api/gigs/:id", async (req, res) => {
+  try {
+    const ok = await db.deleteGig(req.params.id);
+    if (!ok) return res.status(404).json({ error: "not found" });
+    res.status(204).end();
+  } catch (err) {
+    console.error("deleteGig failed:", err);
+    res.status(500).json({ error: "could not delete gig" });
+  }
 });
 
 app.post("/api/parse", upload.array("screenshots", 20), async (req, res) => {
@@ -88,6 +108,17 @@ app.post("/api/parse", upload.array("screenshots", 20), async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Decklist API on http://localhost:${PORT}`);
-});
+db.init()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(
+        `Decklist API on http://localhost:${PORT} (storage: ${
+          db.usingDatabase() ? "Postgres" : "JSON file"
+        })`,
+      );
+    });
+  })
+  .catch((err) => {
+    console.error("Database init failed:", err);
+    process.exit(1);
+  });

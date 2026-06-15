@@ -5,7 +5,7 @@ services:
   - type: web
     name: decklist-api
     runtime: node
-    plan: free
+    plan: starter # paid (~$7/mo) — no sleep / no cold starts. Requires a payment method on the Render account.
     rootDir: server
     buildCommand: npm install
     startCommand: npm start

@@ -98,6 +98,12 @@ export default function App() {
 
       <section className="mb-6">
         <UploadDropzone onFiles={handleFiles} busy={parsing} />
+        {parsing && (
+          <div className="mt-2 text-xs text-[#8a8aa0]">
+            Reading… the free server can take ~30–60s to wake on the first upload, and PDFs take
+            longer than screenshots. Hang tight — it's fast once it's awake.
+          </div>
+        )}
         {parseError && <div className="mt-2 text-sm text-rose-300">{parseError}</div>}
         {drafts.length > 0 && (
           <div className="mt-4 space-y-4">
