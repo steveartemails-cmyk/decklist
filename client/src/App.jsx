@@ -8,6 +8,7 @@ import CalendarMonth from "./components/CalendarMonth.jsx";
 import CalendarWeek from "./components/CalendarWeek.jsx";
 import AgendaView from "./components/AgendaView.jsx";
 import GigDetail from "./components/GigDetail.jsx";
+import DayPanel from "./components/DayPanel.jsx";
 
 const monthFmt = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
 
@@ -20,6 +21,7 @@ export default function App() {
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState("");
   const [selected, setSelected] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
 
   useEffect(() => {
     api
@@ -152,13 +154,22 @@ export default function App() {
             <code className="text-rose-200">npm run dev</code>.
           </div>
         ) : view === "month" ? (
-          <CalendarMonth cursor={cursor} gigs={gigs} onSelect={setSelected} />
+          <CalendarMonth cursor={cursor} gigs={gigs} onSelect={setSelected} onSelectDate={setSelectedDate} />
         ) : view === "week" ? (
-          <CalendarWeek cursor={cursor} gigs={gigs} onSelect={setSelected} />
+          <CalendarWeek cursor={cursor} gigs={gigs} onSelect={setSelected} onSelectDate={setSelectedDate} />
         ) : (
           <AgendaView gigs={gigs} onSelect={setSelected} />
         )}
       </section>
+
+      {selectedDate && (
+        <DayPanel
+          date={selectedDate}
+          gigs={gigs}
+          onSelectGig={setSelected}
+          onClose={() => setSelectedDate(null)}
+        />
+      )}
 
       {selected && (
         <GigDetail

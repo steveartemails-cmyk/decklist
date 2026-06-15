@@ -14,6 +14,49 @@ const ARTIST_ALIASES = (process.env.ARTIST_ALIASES || "Dave,Davoted,Dave Davoted
   .map((s) => s.trim())
   .filter(Boolean);
 
+// Standard pay rate — fees are derived from set length, not read off the bill.
+const HOURLY_RATE = Number(process.env.HOURLY_RATE || 1000);
+const RATE_CURRENCY = process.env.RATE_CURRENCY || "THB";
+
+// Bookable venues and their tax rate (kept in sync with client/src/config.js).
+const VENUES = [
+  { name: "Ark Bar", tax: 0 },
+  { name: "Love Beach", tax: 0 },
+  { name: "Other", tax: 0 },
+  { name: "Seen", tax: 0.03 },
+  { name: "Cabanas", tax: 0.03 },
+  { name: "79", tax: 0.03 },
+  { name: "Other 3%", tax: 0.03 },
+];
+
+function taxForVenue(venue) {
+  const v = VENUES.find((x) => x.name === venue);
+  return v ? v.tax : 0;
+}
+
+// Map a venue name read off the bill to a known venue. The two "Other" entries
+// are manual fallbacks, so they aren't auto-matched. Returns null if unknown.
+function matchVenue(raw) {
+  if (!raw) return null;
+  const r = raw.toLowerCase();
+  for (const v of VENUES) {
+    if (v.name.startsWith("Other")) continue;
+    if (r.includes(v.name.toLowerCase())) return v.name;
+  }
+  return null;
+}
+
+// Fee string = hours × HOURLY_RATE, less the venue's tax. Handles midnight
+// crossing. "" if no times.
+function feeForDuration(startTime, endTime, tax = 0) {
+  if (!startTime || !endTime) return "";
+  const [sh, sm] = startTime.split(":").map(Number);
+  const [eh, em] = endTime.split(":").map(Number);
+  let mins = eh * 60 + em - (sh * 60 + sm);
+  if (mins <= 0) mins += 1440;
+  return String(Math.round((mins / 60) * HOURLY_RATE * (1 - tax)));
+}
+
 const IMAGE_MEDIA_TYPES = {
   ".png": "image/png",
   ".jpg": "image/jpeg",
@@ -97,16 +140,26 @@ function client() {
 }
 
 function normalize(item) {
+  // Snap the read venue to a known one so its tax applies; unknown → "Other".
+  const matched = matchVenue(item.venue);
+  const venue = matched || "Other";
+  // Fee is our fixed hourly rate × set length, less venue tax — not the bill's.
+  const fee = feeForDuration(item.startTime, item.endTime, taxForVenue(venue)) || item.fee || "";
+  // Don't lose an unrecognised venue name — keep it in the notes.
+  let notes = item.notes || "";
+  if (!matched && item.venue) {
+    notes = `Venue read: ${item.venue}${notes ? ` — ${notes}` : ""}`;
+  }
   return {
     matchedName: item.matchedName || "",
     eventName: item.eventName || "",
-    venue: item.venue || "",
+    venue,
     date: item.date || "",
     startTime: item.startTime || "",
     endTime: item.endTime || "",
-    fee: item.fee || "",
-    currency: item.currency || "",
-    notes: item.notes || "",
+    fee,
+    currency: RATE_CURRENCY,
+    notes,
     confidence: item.confidence || "low",
     unreadable: false,
     special: false,

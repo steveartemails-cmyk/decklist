@@ -4,7 +4,7 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 // Month grid. Each cell lists the gig occurrences on that day. Conflicting gigs
 // and special events are visually distinct.
-export default function CalendarMonth({ cursor, gigs, onSelect }) {
+export default function CalendarMonth({ cursor, gigs, onSelect, onSelectDate }) {
   const byDate = occurrencesByDate(gigs);
   const conflicts = conflictingIds(gigs);
 
@@ -28,8 +28,10 @@ export default function CalendarMonth({ cursor, gigs, onSelect }) {
           return (
             <div
               key={key}
+              onClick={() => onSelectDate(key)}
               className={
-                "min-h-[96px] p-1.5 bg-[#0c0c14] " + (inMonth ? "" : "opacity-40")
+                "min-h-[96px] p-1.5 bg-[#0c0c14] cursor-pointer hover:bg-[#101019] " +
+                (inMonth ? "" : "opacity-40")
               }
             >
               <div
@@ -68,7 +70,10 @@ function DayChip({ occ, conflict, onSelect }) {
   return (
     <button
       type="button"
-      onClick={() => onSelect(g)}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect(g);
+      }}
       title={`${g.eventName || g.venue || "Gig"} ${g.startTime}–${g.endTime}`}
       className={"w-full text-left truncate rounded border px-1.5 py-0.5 text-[11px] leading-tight " + base}
     >

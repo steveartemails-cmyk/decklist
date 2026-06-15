@@ -3,7 +3,7 @@ import { occurrencesByDate, conflictingIds, ymd, startOfWeek, addDays } from "..
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 // Seven-day column view of the week containing `cursor`.
-export default function CalendarWeek({ cursor, gigs, onSelect }) {
+export default function CalendarWeek({ cursor, gigs, onSelect, onSelectDate }) {
   const byDate = occurrencesByDate(gigs);
   const conflicts = conflictingIds(gigs);
   const start = startOfWeek(cursor);
@@ -16,7 +16,11 @@ export default function CalendarWeek({ cursor, gigs, onSelect }) {
         const key = ymd(day);
         const list = byDate.get(key) || [];
         return (
-          <div key={key} className="rounded-lg bg-[#0c0c14] border border-[#1c1c28] min-h-[260px] p-2">
+          <div
+            key={key}
+            onClick={() => onSelectDate(key)}
+            className="rounded-lg bg-[#0c0c14] border border-[#1c1c28] min-h-[260px] p-2 cursor-pointer hover:border-[#2a2a3a]"
+          >
             <div className="text-xs text-[#8a8aa0] mb-2">
               {WEEKDAYS[i]}
               <span
@@ -49,7 +53,10 @@ function WeekChip({ occ, conflict, onSelect }) {
   return (
     <button
       type="button"
-      onClick={() => onSelect(g)}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect(g);
+      }}
       className={"w-full text-left rounded border px-2 py-1.5 text-xs " + base}
     >
       <div className="font-medium truncate">

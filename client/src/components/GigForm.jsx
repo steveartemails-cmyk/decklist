@@ -1,3 +1,5 @@
+import { feeForDuration, durationHours, taxForVenue, RATE_CURRENCY, VENUES } from "../config.js";
+
 // A controlled editor for a gig's fields. Reused by the confirmation cards (when
 // reviewing a screenshot read) and by the edit panel.
 const field = "w-full rounded-md bg-[#15151f] border border-[#2a2a3a] px-3 py-2 text-sm " +
@@ -9,6 +11,16 @@ export default function GigForm({ value, onChange }) {
   const setRec = (patch) =>
     onChange({ ...value, recurrence: { ...(value.recurrence || { freq: "none" }), ...patch } });
   const rec = value.recurrence || { freq: "none" };
+
+  // Changing a time OR the venue re-derives the fee (venue tax matters).
+  const reprice = (patch) => {
+    const next = { ...value, ...patch };
+    const fee = feeForDuration(next.startTime, next.endTime, next.venue);
+    onChange({ ...next, fee: fee || next.fee || "", currency: value.currency || RATE_CURRENCY });
+  };
+
+  const hours = durationHours(value.startTime, value.endTime);
+  const tax = taxForVenue(value.venue);
 
   return (
     <div className="grid grid-cols-2 gap-3">
@@ -23,12 +35,21 @@ export default function GigForm({ value, onChange }) {
       </div>
       <div className="col-span-2">
         <label className={label}>Venue</label>
-        <input
+        <select
           className={field}
-          value={value.venue || ""}
-          onChange={(e) => set({ venue: e.target.value })}
-          placeholder="Club Aurora"
-        />
+          value={VENUES.some((v) => v.name === value.venue) ? value.venue : ""}
+          onChange={(e) => reprice({ venue: e.target.value })}
+        >
+          <option value="" disabled>
+            Select venue…
+          </option>
+          {VENUES.map((v) => (
+            <option key={v.name} value={v.name}>
+              {v.name}
+              {v.tax ? ` (−${v.tax * 100}% tax)` : ""}
+            </option>
+          ))}
+        </select>
       </div>
       <div>
         <label className={label}>Date</label>
@@ -46,7 +67,7 @@ export default function GigForm({ value, onChange }) {
             type="time"
             className={field}
             value={value.startTime || ""}
-            onChange={(e) => set({ startTime: e.target.value })}
+            onChange={(e) => reprice({ startTime: e.target.value })}
           />
         </div>
         <div>
@@ -55,7 +76,7 @@ export default function GigForm({ value, onChange }) {
             type="time"
             className={field}
             value={value.endTime || ""}
-            onChange={(e) => set({ endTime: e.target.value })}
+            onChange={(e) => reprice({ endTime: e.target.value })}
           />
         </div>
       </div>
@@ -66,17 +87,24 @@ export default function GigForm({ value, onChange }) {
             className={field}
             value={value.fee || ""}
             onChange={(e) => set({ fee: e.target.value })}
-            placeholder="250"
+            placeholder="1000"
             inputMode="decimal"
           />
+          <p className="text-[10px] text-[#8a8aa0] mt-1">
+            {hours
+              ? `${hours % 1 ? hours.toFixed(1) : hours}h × 1000${tax ? ` − ${tax * 100}%` : ""} = ${Number(
+                  feeForDuration(value.startTime, value.endTime, value.venue),
+                ).toLocaleString()} THB`
+              : "auto: 1000 THB/hr — edit to override"}
+          </p>
         </div>
         <div>
           <label className={label}>Currency</label>
           <input
             className={field}
-            value={value.currency || ""}
+            value={value.currency || RATE_CURRENCY}
             onChange={(e) => set({ currency: e.target.value.toUpperCase() })}
-            placeholder="USD"
+            placeholder={RATE_CURRENCY}
             maxLength={3}
           />
         </div>
