@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { jsPDF } from "jspdf";
 import { applyPlugin } from "jspdf-autotable";
-import { RATE_CURRENCY } from "../config.js";
+import { RATE_CURRENCY, taxForVenue } from "../config.js";
 
 applyPlugin(jsPDF); // registers doc.autoTable
 
@@ -61,7 +61,17 @@ export default function InvoiceModal({ venue, monthLabel, monthKey, shifts, onCl
   };
 
   const sorted = [...shifts].sort((a, b) => (a.date < b.date ? -1 : 1));
-  const total = sorted.reduce((s, x) => s + (Number(x.fee) || 0), 0);
+  // Stored fee is the NET (after withholding). Reconstruct the gross so the
+  // invoice can bill gross and show the 3% the client withholds.
+  const taxRate = taxForVenue(venue); // 0 or 0.03
+  const rows = sorted.map((s) => {
+    const net = Number(s.fee) || 0;
+    const gross = taxRate ? Math.round(net / (1 - taxRate)) : net;
+    return { ...s, net, gross };
+  });
+  const subtotalGross = rows.reduce((a, r) => a + r.gross, 0);
+  const netTotal = rows.reduce((a, r) => a + r.net, 0);
+  const wht = subtotalGross - netTotal;
   const money = (n) => `${Number(n || 0).toLocaleString()} ${RATE_CURRENCY}`;
 
   function saveAsDefault() {
@@ -124,14 +134,23 @@ export default function InvoiceModal({ venue, monthLabel, monthKey, shifts, onCl
     doc.autoTable({
       startY: tableStart,
       head: [["#", "Description", "Date", "Time", `Amount (${RATE_CURRENCY})`]],
-      body: sorted.map((s, i) => [
+      body: rows.map((r, i) => [
         String(i + 1),
-        s.eventName || "DJ performance",
-        s.date,
-        s.startTime && s.endTime ? `${s.startTime}–${s.endTime}` : "",
-        Number(s.fee || 0).toLocaleString(),
+        r.eventName || "DJ performance",
+        r.date,
+        r.startTime && r.endTime ? `${r.startTime}–${r.endTime}` : "",
+        r.gross.toLocaleString(),
       ]),
-      foot: [["", "", "", "Total", total.toLocaleString()]],
+      foot: taxRate
+        ? [
+            [{ content: "Subtotal", colSpan: 4, styles: { halign: "right" } }, subtotalGross.toLocaleString()],
+            [
+              { content: `Withholding tax ${taxRate * 100}% (paid by client)`, colSpan: 4, styles: { halign: "right" } },
+              `-${wht.toLocaleString()}`,
+            ],
+            [{ content: "Total (net payable)", colSpan: 4, styles: { halign: "right" } }, netTotal.toLocaleString()],
+          ]
+        : [[{ content: "Total", colSpan: 4, styles: { halign: "right" } }, netTotal.toLocaleString()]],
       theme: "grid",
       styles: { fontSize: 9, cellPadding: 2.5 },
       headStyles: { fillColor: [33, 33, 45], textColor: 255, fontStyle: "bold" },
@@ -264,19 +283,36 @@ export default function InvoiceModal({ venue, monthLabel, monthKey, shifts, onCl
           <div className="px-3 py-2 text-xs text-[#8a8aa0] bg-[#10101a]">
             {monthLabel} · {sorted.length} shift{sorted.length === 1 ? "" : "s"}
           </div>
-          {sorted.map((s, i) => (
+          {rows.map((r, i) => (
             <div key={i} className="flex items-center justify-between px-3 py-1.5 text-sm border-t border-[#1c1c28]">
               <span className="text-[#c8c8d8]">
-                {s.date}
-                <span className="text-[#8a8aa0] ml-2 text-xs">{s.startTime && s.endTime ? `${s.startTime}–${s.endTime}` : ""}</span>
+                {r.date}
+                <span className="text-[#8a8aa0] ml-2 text-xs">{r.startTime && r.endTime ? `${r.startTime}–${r.endTime}` : ""}</span>
               </span>
-              <span className="tabular-nums">{money(s.fee)}</span>
+              <span className="tabular-nums">{money(r.gross)}</span>
             </div>
           ))}
-          <div className="flex items-center justify-between px-3 py-2 text-sm font-semibold border-t border-[#2a2a3a] bg-[#10101a]">
-            <span>Total</span>
-            <span className="tabular-nums">{money(total)}</span>
-          </div>
+          {taxRate ? (
+            <>
+              <div className="flex items-center justify-between px-3 py-1.5 text-sm border-t border-[#2a2a3a]">
+                <span className="text-[#8a8aa0]">Subtotal</span>
+                <span className="tabular-nums">{money(subtotalGross)}</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-1.5 text-sm">
+                <span className="text-[#8a8aa0]">Withholding tax {taxRate * 100}% (paid by client)</span>
+                <span className="tabular-nums text-rose-300">-{money(wht)}</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2 text-sm font-semibold border-t border-[#2a2a3a] bg-[#10101a]">
+                <span>Total (net payable)</span>
+                <span className="tabular-nums">{money(netTotal)}</span>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-between px-3 py-2 text-sm font-semibold border-t border-[#2a2a3a] bg-[#10101a]">
+              <span>Total</span>
+              <span className="tabular-nums">{money(netTotal)}</span>
+            </div>
+          )}
         </div>
 
         <button onClick={downloadPDF} className="w-full rounded-md bg-indigo-600 hover:bg-indigo-500 px-4 py-2.5 text-sm font-medium" type="button">
