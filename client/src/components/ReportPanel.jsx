@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { expandOccurrences, addMonths } from "../schedule.js";
 import { RATE_CURRENCY } from "../config.js";
+
+// Lazy so jsPDF (heavy) only loads when an invoice is actually generated.
+const InvoiceModal = lazy(() => import("./InvoiceModal.jsx"));
 
 const monthFmt = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
 
@@ -28,10 +31,12 @@ function endedBy(dateStr, startTime, endTime, now) {
 // Counts the dates of recurring gigs too.
 export default function ReportPanel({ gigs, onClose }) {
   const [cursor, setCursor] = useState(new Date());
+  const [invoiceVenue, setInvoiceVenue] = useState(null);
   const key = monthKey(cursor);
   const now = new Date();
 
   const byVenue = new Map(); // venue -> { earned, expected }
+  const byVenueShifts = new Map(); // venue -> [{date,startTime,endTime,fee}]
   let totalEarned = 0;
   let totalExpected = 0;
   for (const gig of gigs) {
@@ -47,6 +52,9 @@ export default function ReportPanel({ gigs, onClose }) {
         totalEarned += fee;
       }
       byVenue.set(venue, cur);
+      const arr = byVenueShifts.get(venue) || [];
+      arr.push({ date: occ.date, startTime: occ.gig.startTime, endTime: occ.gig.endTime, fee: occ.gig.fee });
+      byVenueShifts.set(venue, arr);
     }
   }
   const rows = [...byVenue.entries()].sort((a, b) => b[1].expected - a[1].expected);
@@ -89,7 +97,16 @@ export default function ReportPanel({ gigs, onClose }) {
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[#8a8aa0]">Expected this month</span>
-                  <span className="tabular-nums">{money(expected)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="tabular-nums">{money(expected)}</span>
+                    <button
+                      onClick={() => setInvoiceVenue(venue)}
+                      className="rounded-md border border-indigo-500/50 bg-indigo-600/20 hover:bg-indigo-600/30 px-2 py-0.5 text-[11px] text-indigo-100"
+                      type="button"
+                    >
+                      🧾 Invoice
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -111,6 +128,18 @@ export default function ReportPanel({ gigs, onClose }) {
           “Earned to date” counts shifts already finished as of now; “Expected” counts every shift
           dated in this month (1st onward), including recurring dates.
         </p>
+
+        {invoiceVenue && (
+          <Suspense fallback={null}>
+            <InvoiceModal
+              venue={invoiceVenue}
+              monthLabel={monthFmt.format(cursor)}
+              monthKey={key}
+              shifts={byVenueShifts.get(invoiceVenue) || []}
+              onClose={() => setInvoiceVenue(null)}
+            />
+          </Suspense>
+        )}
       </div>
     </div>
   );
