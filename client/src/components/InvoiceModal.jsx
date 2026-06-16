@@ -27,6 +27,8 @@ const field =
   "w-full rounded-md bg-[#15151f] border border-[#2a2a3a] px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 placeholder:text-[#555]";
 const label = "block text-xs font-medium text-[#9a9ab0] mb-1";
 const section = "text-xs font-semibold uppercase tracking-wide text-[#8a8aa0] mt-4 mb-2";
+const cell =
+  "w-full rounded-md bg-[#15151f] border border-[#2a2a3a] px-2 py-1 text-sm focus:outline-none focus:border-indigo-500 placeholder:text-[#555]";
 
 // Per-venue invoice. All fields are editable. "Set as default" remembers your
 // details + bank globally, and the recipient for this venue. Exports a clean,
@@ -60,17 +62,28 @@ export default function InvoiceModal({ venue, monthLabel, monthKey, shifts, onCl
     setSavedNote("");
   };
 
-  const sorted = [...shifts].sort((a, b) => (a.date < b.date ? -1 : 1));
-  // The stored fee is the NET (after the venue's 3% withholding). The invoice
-  // bills the GROSS — the venue deducts the 3% on their side — while the app's
-  // report keeps showing the net the DJ actually receives.
   const taxRate = taxForVenue(venue); // 0 or 0.03
-  const rows = sorted.map((s) => {
-    const net = Number(s.fee) || 0;
-    const gross = taxRate ? Math.round(net / (1 - taxRate)) : net;
-    return { ...s, gross };
-  });
-  const total = rows.reduce((a, r) => a + r.gross, 0);
+  // Editable invoice line items. Description defaults to "DJ Performance"; the
+  // amount is the GROSS (the venue withholds the 3% on their own side).
+  const [items, setItems] = useState(() =>
+    [...shifts]
+      .sort((a, b) => (a.date < b.date ? -1 : 1))
+      .map((s) => {
+        const net = Number(s.fee) || 0;
+        const gross = taxRate ? Math.round(net / (1 - taxRate)) : net;
+        return {
+          description: "DJ Performance",
+          date: s.date,
+          time: s.startTime && s.endTime ? `${s.startTime}–${s.endTime}` : "",
+          amount: String(gross),
+        };
+      }),
+  );
+  const updateItem = (i, patch) => setItems((it) => it.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const removeItem = (i) => setItems((it) => it.filter((_, j) => j !== i));
+  const addItem = () =>
+    setItems((it) => [...it, { description: "DJ Performance", date: "", time: "", amount: "" }]);
+  const total = items.reduce((a, x) => a + (Number(x.amount) || 0), 0);
   const money = (n) => `${Number(n || 0).toLocaleString()} ${RATE_CURRENCY}`;
 
   function saveAsDefault() {
@@ -133,12 +146,12 @@ export default function InvoiceModal({ venue, monthLabel, monthKey, shifts, onCl
     doc.autoTable({
       startY: tableStart,
       head: [["#", "Description", "Date", "Time", `Amount (${RATE_CURRENCY})`]],
-      body: rows.map((r, i) => [
+      body: items.map((it, i) => [
         String(i + 1),
-        r.eventName || "DJ performance",
-        r.date,
-        r.startTime && r.endTime ? `${r.startTime}–${r.endTime}` : "",
-        r.gross.toLocaleString(),
+        it.description || "DJ Performance",
+        it.date,
+        it.time,
+        (Number(it.amount) || 0).toLocaleString(),
       ]),
       foot: [[{ content: "Total", colSpan: 4, styles: { halign: "right" } }, total.toLocaleString()]],
       theme: "grid",
@@ -269,17 +282,37 @@ export default function InvoiceModal({ venue, monthLabel, monthKey, shifts, onCl
           {savedNote && <span className="text-xs text-emerald-300">{savedNote}</span>}
         </div>
 
+        <div className={section}>Line items (editable)</div>
         <div className="rounded-lg border border-[#1c1c28] overflow-hidden mb-4">
-          <div className="px-3 py-2 text-xs text-[#8a8aa0] bg-[#10101a]">
-            {monthLabel} · {sorted.length} shift{sorted.length === 1 ? "" : "s"}
+          <div className="px-3 py-2 text-xs text-[#8a8aa0] bg-[#10101a] flex items-center justify-between">
+            <span>{monthLabel}</span>
+            <button onClick={addItem} className="text-indigo-300 hover:text-indigo-200" type="button">
+              + Add line
+            </button>
           </div>
-          {rows.map((r, i) => (
-            <div key={i} className="flex items-center justify-between px-3 py-1.5 text-sm border-t border-[#1c1c28]">
-              <span className="text-[#c8c8d8]">
-                {r.date}
-                <span className="text-[#8a8aa0] ml-2 text-xs">{r.startTime && r.endTime ? `${r.startTime}–${r.endTime}` : ""}</span>
-              </span>
-              <span className="tabular-nums">{money(r.gross)}</span>
+          {items.map((it, i) => (
+            <div key={i} className="px-3 py-2 border-t border-[#1c1c28] space-y-1.5">
+              <div className="flex items-center gap-2">
+                <input
+                  className={cell}
+                  value={it.description}
+                  onChange={(e) => updateItem(i, { description: e.target.value })}
+                  placeholder="DJ Performance"
+                />
+                <button
+                  onClick={() => removeItem(i)}
+                  className="text-[#8a8aa0] hover:text-rose-300 text-lg leading-none px-1"
+                  type="button"
+                  aria-label="Remove line"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="grid grid-cols-[1fr_1fr_1fr] gap-2">
+                <input className={cell} value={it.date} onChange={(e) => updateItem(i, { date: e.target.value })} placeholder="2026-05-05" />
+                <input className={cell} value={it.time} onChange={(e) => updateItem(i, { time: e.target.value })} placeholder="22:00–02:00" />
+                <input className={cell} value={it.amount} onChange={(e) => updateItem(i, { amount: e.target.value })} placeholder="4000" inputMode="decimal" />
+              </div>
             </div>
           ))}
           <div className="flex items-center justify-between px-3 py-2 text-sm font-semibold border-t border-[#2a2a3a] bg-[#10101a]">
