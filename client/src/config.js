@@ -25,11 +25,10 @@ export const RATE_CURRENCY = "THB";
 export const VENUES = [
   { name: "Ark Bar", tax: 0 },
   { name: "Love Beach", tax: 0 },
-  { name: "Other", tax: 0 },
   { name: "Seen", tax: 0.03 },
   { name: "Cabanas", tax: 0.03 },
   { name: "79", tax: 0.03 },
-  { name: "Other 3%", tax: 0.03 },
+  { name: "Other", tax: 0 },
 ];
 
 // The proper-cased known venue name matching `input` (case-insensitive), or null

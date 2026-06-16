@@ -22,11 +22,10 @@ const RATE_CURRENCY = process.env.RATE_CURRENCY || "THB";
 const VENUES = [
   { name: "Ark Bar", tax: 0 },
   { name: "Love Beach", tax: 0 },
-  { name: "Other", tax: 0 },
   { name: "Seen", tax: 0.03 },
   { name: "Cabanas", tax: 0.03 },
   { name: "79", tax: 0.03 },
-  { name: "Other 3%", tax: 0.03 },
+  { name: "Other", tax: 0 },
 ];
 
 function taxForVenue(venue) {
