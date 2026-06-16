@@ -61,17 +61,16 @@ export default function InvoiceModal({ venue, monthLabel, monthKey, shifts, onCl
   };
 
   const sorted = [...shifts].sort((a, b) => (a.date < b.date ? -1 : 1));
-  // Stored fee is the NET (after withholding). Reconstruct the gross so the
-  // invoice can bill gross and show the 3% the client withholds.
+  // The stored fee is the NET (after the venue's 3% withholding). The invoice
+  // bills the GROSS — the venue deducts the 3% on their side — while the app's
+  // report keeps showing the net the DJ actually receives.
   const taxRate = taxForVenue(venue); // 0 or 0.03
   const rows = sorted.map((s) => {
     const net = Number(s.fee) || 0;
     const gross = taxRate ? Math.round(net / (1 - taxRate)) : net;
-    return { ...s, net, gross };
+    return { ...s, gross };
   });
-  const subtotalGross = rows.reduce((a, r) => a + r.gross, 0);
-  const netTotal = rows.reduce((a, r) => a + r.net, 0);
-  const wht = subtotalGross - netTotal;
+  const total = rows.reduce((a, r) => a + r.gross, 0);
   const money = (n) => `${Number(n || 0).toLocaleString()} ${RATE_CURRENCY}`;
 
   function saveAsDefault() {
@@ -141,16 +140,7 @@ export default function InvoiceModal({ venue, monthLabel, monthKey, shifts, onCl
         r.startTime && r.endTime ? `${r.startTime}–${r.endTime}` : "",
         r.gross.toLocaleString(),
       ]),
-      foot: taxRate
-        ? [
-            [{ content: "Subtotal", colSpan: 4, styles: { halign: "right" } }, subtotalGross.toLocaleString()],
-            [
-              { content: `Withholding tax ${taxRate * 100}% (paid by client)`, colSpan: 4, styles: { halign: "right" } },
-              `-${wht.toLocaleString()}`,
-            ],
-            [{ content: "Total (net payable)", colSpan: 4, styles: { halign: "right" } }, netTotal.toLocaleString()],
-          ]
-        : [[{ content: "Total", colSpan: 4, styles: { halign: "right" } }, netTotal.toLocaleString()]],
+      foot: [[{ content: "Total", colSpan: 4, styles: { halign: "right" } }, total.toLocaleString()]],
       theme: "grid",
       styles: { fontSize: 9, cellPadding: 2.5 },
       headStyles: { fillColor: [33, 33, 45], textColor: 255, fontStyle: "bold" },
@@ -292,27 +282,10 @@ export default function InvoiceModal({ venue, monthLabel, monthKey, shifts, onCl
               <span className="tabular-nums">{money(r.gross)}</span>
             </div>
           ))}
-          {taxRate ? (
-            <>
-              <div className="flex items-center justify-between px-3 py-1.5 text-sm border-t border-[#2a2a3a]">
-                <span className="text-[#8a8aa0]">Subtotal</span>
-                <span className="tabular-nums">{money(subtotalGross)}</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 text-sm">
-                <span className="text-[#8a8aa0]">Withholding tax {taxRate * 100}% (paid by client)</span>
-                <span className="tabular-nums text-rose-300">-{money(wht)}</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-2 text-sm font-semibold border-t border-[#2a2a3a] bg-[#10101a]">
-                <span>Total (net payable)</span>
-                <span className="tabular-nums">{money(netTotal)}</span>
-              </div>
-            </>
-          ) : (
-            <div className="flex items-center justify-between px-3 py-2 text-sm font-semibold border-t border-[#2a2a3a] bg-[#10101a]">
-              <span>Total</span>
-              <span className="tabular-nums">{money(netTotal)}</span>
-            </div>
-          )}
+          <div className="flex items-center justify-between px-3 py-2 text-sm font-semibold border-t border-[#2a2a3a] bg-[#10101a]">
+            <span>Total</span>
+            <span className="tabular-nums">{money(total)}</span>
+          </div>
         </div>
 
         <button onClick={downloadPDF} className="w-full rounded-md bg-indigo-600 hover:bg-indigo-500 px-4 py-2.5 text-sm font-medium" type="button">
