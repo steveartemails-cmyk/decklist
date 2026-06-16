@@ -11,6 +11,7 @@ import AgendaView from "./components/AgendaView.jsx";
 import GigDetail from "./components/GigDetail.jsx";
 import DayPanel from "./components/DayPanel.jsx";
 import NewShiftPanel from "./components/NewShiftPanel.jsx";
+import ReportPanel from "./components/ReportPanel.jsx";
 
 const monthFmt = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
 
@@ -26,6 +27,8 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [newShiftDate, setNewShiftDate] = useState(null);
   const [addingAll, setAddingAll] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   useEffect(() => {
     api
@@ -165,14 +168,56 @@ export default function App() {
             Screenshot your bookings. Never double-book a gig.
           </p>
         </div>
-        <button
-          onClick={() => downloadICS(gigs)}
-          disabled={gigs.length === 0}
-          className="rounded-md border border-[#2a2a3a] hover:border-[#3a3a4f] disabled:opacity-40 px-3 py-2 text-sm"
-          type="button"
-        >
-          Export all .ics
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-label="Menu"
+            className="rounded-md border border-[#2a2a3a] hover:border-[#3a3a4f] p-2"
+            type="button"
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+              <div className="absolute right-0 mt-2 w-52 rounded-lg border border-[#2a2a3a] bg-[#0f0f17] shadow-xl z-20 py-1">
+                <button
+                  onClick={() => {
+                    setShowReport(true);
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-[#15151f]"
+                  type="button"
+                >
+                  📊 Reporting
+                </button>
+                <button
+                  onClick={() => {
+                    downloadICS(gigs);
+                    setMenuOpen(false);
+                  }}
+                  disabled={gigs.length === 0}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-[#15151f] disabled:opacity-40"
+                  type="button"
+                >
+                  ⬇ Export all (.ics)
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </header>
 
       <section className="mb-6">
@@ -281,6 +326,8 @@ export default function App() {
           onClose={() => setNewShiftDate(null)}
         />
       )}
+
+      {showReport && <ReportPanel gigs={gigs} onClose={() => setShowReport(false)} />}
 
       {selected && (
         <GigDetail
