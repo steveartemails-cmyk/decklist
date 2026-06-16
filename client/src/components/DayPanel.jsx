@@ -9,7 +9,7 @@ const fmt = new Intl.DateTimeFormat(undefined, {
 
 // Slide-over panel showing every gig on a single day. Opened by clicking a date
 // cell. Each gig is clickable to open its full detail.
-export default function DayPanel({ date, gigs, onSelectGig, onClose }) {
+export default function DayPanel({ date, gigs, onSelectGig, onAddShift, onClose }) {
   const list = occurrencesByDate(gigs).get(date) || [];
   const conflicts = conflictingIds(gigs);
 
@@ -26,6 +26,14 @@ export default function DayPanel({ date, gigs, onSelectGig, onClose }) {
             ×
           </button>
         </div>
+
+        <button
+          onClick={() => onAddShift(date)}
+          className="w-full mb-4 rounded-lg border border-indigo-500/50 bg-indigo-600/20 hover:bg-indigo-600/30 px-3 py-2 text-sm font-medium text-indigo-100"
+          type="button"
+        >
+          + Add a shift
+        </button>
 
         {list.length === 0 ? (
           <p className="text-sm text-[#8a8aa0]">No gigs on this day.</p>

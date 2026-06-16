@@ -10,6 +10,7 @@ import CalendarWeek from "./components/CalendarWeek.jsx";
 import AgendaView from "./components/AgendaView.jsx";
 import GigDetail from "./components/GigDetail.jsx";
 import DayPanel from "./components/DayPanel.jsx";
+import NewShiftPanel from "./components/NewShiftPanel.jsx";
 
 const monthFmt = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
 
@@ -23,6 +24,7 @@ export default function App() {
   const [parseError, setParseError] = useState("");
   const [selected, setSelected] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [newShiftDate, setNewShiftDate] = useState(null);
   const [addingAll, setAddingAll] = useState(false);
 
   useEffect(() => {
@@ -119,6 +121,13 @@ export default function App() {
     } finally {
       setAddingAll(false);
     }
+  }
+
+  // Create a gig entered by hand. Throws on conflict so the panel can offer
+  // "Save anyway".
+  async function createGigManual(gig, opts) {
+    const created = await api.createGig(gig, opts);
+    setGigs((g) => [...g, created]);
   }
 
   async function saveExisting(id, gig, opts) {
@@ -260,7 +269,16 @@ export default function App() {
           date={selectedDate}
           gigs={gigs}
           onSelectGig={setSelected}
+          onAddShift={setNewShiftDate}
           onClose={() => setSelectedDate(null)}
+        />
+      )}
+
+      {newShiftDate && (
+        <NewShiftPanel
+          date={newShiftDate}
+          onCreate={createGigManual}
+          onClose={() => setNewShiftDate(null)}
         />
       )}
 
