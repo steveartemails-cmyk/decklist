@@ -53,7 +53,13 @@ export default function ReportPanel({ gigs, onClose }) {
       }
       byVenue.set(venue, cur);
       const arr = byVenueShifts.get(venue) || [];
-      arr.push({ date: occ.date, startTime: occ.gig.startTime, endTime: occ.gig.endTime, fee: occ.gig.fee });
+      arr.push({
+        date: occ.date,
+        startTime: occ.gig.startTime,
+        endTime: occ.gig.endTime,
+        fee: occ.gig.fee,
+        eventName: occ.gig.eventName,
+      });
       byVenueShifts.set(venue, arr);
     }
   }
