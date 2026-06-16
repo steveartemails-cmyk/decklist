@@ -42,6 +42,8 @@ export default function InvoiceModal({ venue, monthLabel, monthKey, shifts, onCl
       email: p.email || "",
       tel: p.tel || "",
       taxId: p.taxId || "",
+      companyName: p.companyName || "",
+      companyAddress: p.companyAddress || "",
       bankAccountName: p.bankAccountName || "",
       bankName: p.bankName || "",
       accountNumber: p.accountNumber || "",
@@ -91,6 +93,8 @@ export default function InvoiceModal({ venue, monthLabel, monthKey, shifts, onCl
       ...(form.address ? form.address.split("\n") : []),
       form.email && `E-mail: ${form.email}`,
       form.tel && `Tel: ${form.tel}`,
+      form.companyName && form.companyName,
+      ...(form.companyAddress ? form.companyAddress.split("\n") : []),
       form.taxId && `ID TAX : ${form.taxId}`,
     ].filter(Boolean);
     for (const line of billerLines) {
@@ -190,6 +194,14 @@ export default function InvoiceModal({ venue, monthLabel, monthKey, shifts, onCl
           <div>
             <label className={label}>Tel</label>
             <input className={field} value={form.tel} onChange={(e) => set({ tel: e.target.value })} placeholder="+66 (0) 876414190" />
+          </div>
+          <div className="col-span-2">
+            <label className={label}>Company name</label>
+            <input className={field} value={form.companyName} onChange={(e) => set({ companyName: e.target.value })} placeholder="Paradise events co., ltd." />
+          </div>
+          <div className="col-span-2">
+            <label className={label}>Company address</label>
+            <textarea className={field + " resize-y min-h-[56px]"} value={form.companyAddress} onChange={(e) => set({ companyAddress: e.target.value })} placeholder={"209/5 moo 2 Bophut Bay\nKoh Samui, Suratthani 84320"} />
           </div>
           <div className="col-span-2">
             <label className={label}>Tax ID</label>
