@@ -26,6 +26,7 @@ const VENUES = [
   { name: "Cabanas", tax: 0.03 },
   { name: "79", tax: 0.03 },
   { name: "Other", tax: 0 },
+  { name: "Other 3%", tax: 0.03 },
 ];
 
 function taxForVenue(venue) {
