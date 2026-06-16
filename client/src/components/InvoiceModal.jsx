@@ -224,7 +224,7 @@ export default function InvoiceModal({ venue, monthLabel, monthKey, shifts, onCl
             <input className={field} value={form.invoiceNumber} onChange={(e) => set({ invoiceNumber: e.target.value })} placeholder="21052026" />
           </div>
           <div>
-            <label className={label}>Date</label>
+            <label className={label}>Invoice date</label>
             <input className={field} value={form.dateStr} onChange={(e) => set({ dateStr: e.target.value })} placeholder="21/5/2026" />
           </div>
         </div>
