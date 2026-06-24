@@ -134,7 +134,8 @@ export default function App() {
   }
 
   async function saveExisting(id, gig, opts) {
-    const updated = await api.updateGig(id, gig, opts);
+    const { _occurrenceDate, ...clean } = gig; // drop the UI-only occurrence marker
+    const updated = await api.updateGig(id, clean, opts);
     setGigs((g) => g.map((x) => (x.id === id ? updated : x)));
     setSelected(updated);
   }
@@ -142,6 +143,36 @@ export default function App() {
   async function removeGig(id) {
     await api.deleteGig(id);
     setGigs((g) => g.filter((x) => x.id !== id));
+    setSelected(null);
+  }
+
+  // Tell a recurring series to skip one date. Used both to cancel a single
+  // occurrence and as the first half of editing one date in isolation.
+  async function addExdate(parentId, originalDate) {
+    const parent = gigs.find((x) => x.id === parentId);
+    const exdates = [...new Set([...(parent?.exdates || []), originalDate])];
+    const updated = await api.updateGig(parentId, { exdates });
+    setGigs((g) => g.map((x) => (x.id === parentId ? updated : x)));
+    return updated;
+  }
+
+  // Cancel just one date of a repeating gig — the rest of the series is untouched.
+  async function skipOccurrence(parentId, originalDate) {
+    await addExdate(parentId, originalDate);
+    setSelected(null);
+  }
+
+  // Edit just one date of a repeating gig: split it off into its own independent
+  // one-off gig, and skip that date in the series so it isn't generated twice.
+  // The series is told to skip the date FIRST, so the new standalone gig can't
+  // collide with the occurrence it replaces. Throws on conflict (with other
+  // gigs) so the detail panel can offer "Save anyway".
+  async function saveOccurrenceEdit(parentId, originalDate, editedGig, opts) {
+    await addExdate(parentId, originalDate);
+    const { id, createdAt, _occurrenceDate, exdates, ...rest } = editedGig;
+    const standalone = { ...rest, recurrence: { freq: "none" } };
+    const created = await api.createGig(standalone, opts);
+    setGigs((g) => [...g, created]);
     setSelected(null);
   }
 
@@ -335,6 +366,8 @@ export default function App() {
           onClose={() => setSelected(null)}
           onSave={saveExisting}
           onDelete={removeGig}
+          onSaveOccurrence={saveOccurrenceEdit}
+          onSkipOccurrence={skipOccurrence}
         />
       )}
     </div>

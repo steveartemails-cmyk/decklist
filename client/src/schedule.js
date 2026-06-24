@@ -34,6 +34,15 @@ function overlap(a, b) {
   return a.start < b.end && b.start < a.end;
 }
 
+// Normalize a recurrence frequency to one of "weekly" | "monthly" | "none".
+// Tolerates casing/whitespace ("Weekly", " WEEKLY ") so a stray value can never
+// be misread as a new frequency — or, worse, leave the date un-advanced and make
+// a gig clone itself onto the same day over and over.
+export function normalizeFreq(freq) {
+  const f = String(freq || "none").toLowerCase().trim();
+  return f === "weekly" || f === "monthly" ? f : "none";
+}
+
 function shiftDate(date, freq, n) {
   const [y, m, d] = date.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));
@@ -44,16 +53,22 @@ function shiftDate(date, freq, n) {
 
 // Expand a gig into concrete dated occurrences. Each occurrence keeps a link to
 // its parent gig id so clicking an occurrence opens the original.
+//
+// `exdates` (YYYY-MM-DD strings) are dates the series should NOT generate —
+// because that occurrence was edited into its own standalone gig, or cancelled.
 export function expandOccurrences(gig, { horizon = 52 } = {}) {
   const rec = gig.recurrence;
-  if (!rec || !rec.freq || rec.freq === "none") {
+  const freq = normalizeFreq(rec && rec.freq);
+  if (freq === "none") {
     return [{ gig, date: gig.date, key: gig.id }];
   }
+  const skip = new Set(gig.exdates || []);
   const out = [];
   const max = rec.count && rec.count > 0 ? rec.count : horizon;
   for (let i = 0; i < max; i++) {
-    const date = shiftDate(gig.date, rec.freq, i);
+    const date = shiftDate(gig.date, freq, i);
     if (rec.until && date > rec.until) break;
+    if (skip.has(date)) continue; // edited out or cancelled for this date only
     out.push({ gig, date, key: `${gig.id}#${i}` });
   }
   return out;

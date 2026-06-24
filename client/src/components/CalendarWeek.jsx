@@ -55,7 +55,7 @@ function WeekChip({ occ, conflict, onSelect }) {
       type="button"
       onClick={(e) => {
         e.stopPropagation();
-        onSelect(g);
+        onSelect({ ...g, _occurrenceDate: occ.date });
       }}
       className={"w-full text-left rounded border px-2 py-1.5 text-xs " + base}
     >

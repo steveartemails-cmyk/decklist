@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { jsPDF } from "jspdf";
 import { applyPlugin } from "jspdf-autotable";
-import { RATE_CURRENCY, taxForVenue } from "../config.js";
+import { RATE_CURRENCY, taxForVenue, formatDate } from "../config.js";
 
 applyPlugin(jsPDF); // registers doc.autoTable
 
@@ -20,7 +20,7 @@ function todayParts() {
   const d = new Date();
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
-  return { dd, mm, yyyy: d.getFullYear(), human: `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}` };
+  return { dd, mm, yyyy: d.getFullYear(), human: `${dd}/${mm}/${d.getFullYear()}` };
 }
 
 const field =
@@ -67,13 +67,13 @@ export default function InvoiceModal({ venue, monthLabel, monthKey, shifts, onCl
   // amount is the GROSS (the venue withholds the 3% on their own side).
   const [items, setItems] = useState(() =>
     [...shifts]
-      .sort((a, b) => (a.date < b.date ? -1 : 1))
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
       .map((s) => {
         const net = Number(s.fee) || 0;
         const gross = taxRate ? Math.round(net / (1 - taxRate)) : net;
         return {
           description: "DJ Performance",
-          date: s.date,
+          date: formatDate(s.date),
           time: s.startTime && s.endTime ? `${s.startTime}–${s.endTime}` : "",
           amount: String(gross),
         };
@@ -247,7 +247,7 @@ export default function InvoiceModal({ venue, monthLabel, monthKey, shifts, onCl
           </div>
           <div>
             <label className={label}>Invoice date</label>
-            <input className={field} value={form.dateStr} onChange={(e) => set({ dateStr: e.target.value })} placeholder="21/5/2026" />
+            <input className={field} value={form.dateStr} onChange={(e) => set({ dateStr: e.target.value })} placeholder="21/05/2026" />
           </div>
         </div>
 
@@ -309,7 +309,7 @@ export default function InvoiceModal({ venue, monthLabel, monthKey, shifts, onCl
                 </button>
               </div>
               <div className="grid grid-cols-[1fr_1fr_1fr] gap-2">
-                <input className={cell} value={it.date} onChange={(e) => updateItem(i, { date: e.target.value })} placeholder="2026-05-05" />
+                <input className={cell} value={it.date} onChange={(e) => updateItem(i, { date: e.target.value })} placeholder="21/05/2026" />
                 <input className={cell} value={it.time} onChange={(e) => updateItem(i, { time: e.target.value })} placeholder="22:00–02:00" />
                 <input className={cell} value={it.amount} onChange={(e) => updateItem(i, { amount: e.target.value })} placeholder="4000" inputMode="decimal" />
               </div>

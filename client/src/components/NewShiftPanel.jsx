@@ -1,6 +1,6 @@
 import { useState } from "react";
 import GigForm from "./GigForm.jsx";
-import { RATE_CURRENCY } from "../config.js";
+import { RATE_CURRENCY, formatDate } from "../config.js";
 
 // A fresh, empty shift for the given date. Venue blank (typeahead fills it),
 // everything else blank; the fee auto-derives from times × rate − venue tax.
@@ -70,7 +70,7 @@ export default function NewShiftPanel({ date, onClose, onCreate }) {
             <ul className="text-rose-200/90 text-xs space-y-0.5">
               {conflicts.map((c) => (
                 <li key={c.id}>
-                  {c.eventName || c.venue || "Gig"} — {c.date} {c.startTime}–{c.endTime}
+                  {c.eventName || c.venue || "Gig"} — {formatDate(c.date)} {c.startTime}–{c.endTime}
                 </li>
               ))}
             </ul>

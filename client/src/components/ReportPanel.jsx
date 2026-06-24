@@ -37,13 +37,20 @@ export default function ReportPanel({ gigs, onClose }) {
 
   const byVenue = new Map(); // venue -> { earned, expected }
   const byVenueShifts = new Map(); // venue -> [{date,startTime,endTime,fee}]
+  const seen = new Set(); // venue|date|start|end — collapse duplicate slots
   let totalEarned = 0;
   let totalExpected = 0;
   for (const gig of gigs) {
     for (const occ of expandOccurrences(gig)) {
       if (!occ.date || !occ.date.startsWith(key)) continue;
-      const fee = Number(occ.gig.fee) || 0;
       const venue = occ.gig.venue || "Unspecified";
+      // One physical slot = one venue on one date at one time. A repeating gig
+      // whose date coincides with another gig must not be billed/counted twice,
+      // so the invoice always matches what's on the calendar.
+      const slot = `${venue}|${occ.date}|${occ.gig.startTime || ""}|${occ.gig.endTime || ""}`;
+      if (seen.has(slot)) continue;
+      seen.add(slot);
+      const fee = Number(occ.gig.fee) || 0;
       const cur = byVenue.get(venue) || { earned: 0, expected: 0 };
       cur.expected += fee;
       totalExpected += fee;

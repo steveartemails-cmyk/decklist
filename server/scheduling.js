@@ -50,6 +50,14 @@ export function isSchedulable(gig) {
   return Boolean(gig && gig.date && gig.startTime && gig.endTime);
 }
 
+// Normalize a recurrence frequency to one of "weekly" | "monthly" | "none".
+// Tolerates casing/whitespace so a stray value can never be misread, or leave the
+// date un-advanced and make a gig clone itself onto the same day repeatedly.
+export function normalizeFreq(freq) {
+  const f = String(freq || "none").toLowerCase().trim();
+  return f === "weekly" || f === "monthly" ? f : "none";
+}
+
 // Shift a YYYY-MM-DD date forward by n weeks or n months.
 function shiftDate(date, freq, n) {
   const [y, m, d] = date.split("-").map(Number);
@@ -62,16 +70,21 @@ function shiftDate(date, freq, n) {
 // Expand a (possibly recurring) gig into concrete occurrences. Non-recurring
 // gigs return a single occurrence. `recurrence` shape:
 //   { freq: "weekly" | "monthly", count?: number, until?: "YYYY-MM-DD" }
+// `exdates` (YYYY-MM-DD strings) are dates the series skips — an occurrence that
+// was edited into its own standalone gig, or cancelled for that date only.
 export function expandOccurrences(gig, { horizon = 26 } = {}) {
   const rec = gig.recurrence;
-  if (!rec || !rec.freq || rec.freq === "none") {
+  const freq = normalizeFreq(rec && rec.freq);
+  if (freq === "none") {
     return [{ ...gig, occurrenceDate: gig.date, occurrenceIndex: 0 }];
   }
+  const skip = new Set(gig.exdates || []);
   const out = [];
   const max = rec.count && rec.count > 0 ? rec.count : horizon;
   for (let i = 0; i < max; i++) {
-    const date = shiftDate(gig.date, rec.freq, i);
+    const date = shiftDate(gig.date, freq, i);
     if (rec.until && date > rec.until) break;
+    if (skip.has(date)) continue; // edited out or cancelled for this date only
     out.push({ ...gig, date, occurrenceDate: date, occurrenceIndex: i });
   }
   return out;

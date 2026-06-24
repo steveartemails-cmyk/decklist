@@ -72,7 +72,7 @@ function DayChip({ occ, conflict, onSelect }) {
       type="button"
       onClick={(e) => {
         e.stopPropagation();
-        onSelect(g);
+        onSelect({ ...g, _occurrenceDate: occ.date });
       }}
       title={`${g.eventName || g.venue || "Gig"} ${g.startTime}–${g.endTime}`}
       className={"w-full text-left truncate rounded border px-1.5 py-0.5 text-[11px] leading-tight " + base}

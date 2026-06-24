@@ -17,6 +17,13 @@ export const mediaUrl = (path) =>
 // Source files can be images or PDFs; PDFs can't render in an <img>.
 export const isPdf = (path) => /\.pdf($|\?)/i.test(path || "");
 
+// Display an ISO date ("YYYY-MM-DD") as "dd/mm/yyyy". Presentation only — storage,
+// sorting and all date math stay ISO. Returns the input unchanged if not ISO.
+export function formatDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ""));
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso || "";
+}
+
 // Standard pay rate. Fees are auto-calculated from set length at this rate.
 export const HOURLY_RATE = 1000;
 export const RATE_CURRENCY = "THB";

@@ -46,7 +46,7 @@ export default function DayPanel({ date, gigs, onSelectGig, onAddShift, onClose 
                 <button
                   key={o.key}
                   type="button"
-                  onClick={() => onSelectGig(g)}
+                  onClick={() => onSelectGig({ ...g, _occurrenceDate: o.date })}
                   className={
                     "w-full text-left rounded-lg border px-3 py-2 " +
                     (conflict

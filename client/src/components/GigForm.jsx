@@ -6,7 +6,7 @@ const field = "w-full rounded-md bg-[#15151f] border border-[#2a2a3a] px-3 py-2 
   "focus:outline-none focus:border-indigo-500 placeholder:text-[#555]";
 const label = "block text-xs font-medium text-[#9a9ab0] mb-1";
 
-export default function GigForm({ value, onChange }) {
+export default function GigForm({ value, onChange, hideRecurrence = false }) {
   const set = (patch) => onChange({ ...value, ...patch });
   const setRec = (patch) =>
     onChange({ ...value, recurrence: { ...(value.recurrence || { freq: "none" }), ...patch } });
@@ -139,7 +139,7 @@ export default function GigForm({ value, onChange }) {
           placeholder="Backline provided, contact @promoter, 2hr set"
         />
       </div>
-      <div className="col-span-2 grid grid-cols-2 gap-2">
+      <div className={"col-span-2 grid grid-cols-2 gap-2" + (hideRecurrence ? " hidden" : "")}>
         <div>
           <label className={label}>Repeats</label>
           <select

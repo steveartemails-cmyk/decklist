@@ -1,5 +1,5 @@
 import GigForm from "./GigForm.jsx";
-import { mediaUrl, isPdf } from "../config.js";
+import { mediaUrl, isPdf, formatDate } from "../config.js";
 
 const confidenceStyles = {
   high: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
@@ -69,7 +69,7 @@ export default function ConfirmationCard({ draft, onChange, onSave, onDiscard, b
           <ul className="text-rose-200/90 text-xs space-y-0.5">
             {conflicts.map((c) => (
               <li key={c.id}>
-                {c.eventName || c.venue || "Gig"} — {c.date} {c.startTime}–{c.endTime}
+                {c.eventName || c.venue || "Gig"} — {formatDate(c.date)} {c.startTime}–{c.endTime}
               </li>
             ))}
           </ul>

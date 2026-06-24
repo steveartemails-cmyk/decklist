@@ -82,6 +82,23 @@ test("weekly recurrence with a count expands to that many occurrences", () => {
   );
 });
 
+test("a stray-cased freq does not make a gig clone itself onto the same day", () => {
+  // Before the fix, "Weekly"/"WEEKLY" failed the exact === checks: the date was
+  // never advanced, so every occurrence landed on the anchor date.
+  const weekly = gig("2026-06-14", "21:00", "23:00", {
+    recurrence: { freq: "WEEKLY", count: 3 },
+  });
+  assert.deepEqual(
+    expandOccurrences(weekly).map((o) => o.date),
+    ["2026-06-14", "2026-06-21", "2026-06-28"],
+  );
+});
+
+test('a non-standard freq like "None" is treated as a one-off, not recurring', () => {
+  const occ = expandOccurrences(gig("2026-06-14", "21:00", "23:00", { recurrence: { freq: "None" } }));
+  assert.equal(occ.length, 1);
+});
+
 test("recurrence stops at the `until` date", () => {
   const weekly = gig("2026-06-14", "21:00", "23:00", {
     recurrence: { freq: "weekly", until: "2026-06-28" },
@@ -91,6 +108,27 @@ test("recurrence stops at the `until` date", () => {
     occ.map((o) => o.date),
     ["2026-06-14", "2026-06-21", "2026-06-28"],
   );
+});
+
+test("expandOccurrences omits dates listed in exdates", () => {
+  const weekly = gig("2026-06-07", "21:00", "23:00", {
+    recurrence: { freq: "weekly", count: 4 },
+    exdates: ["2026-06-21"], // this date was edited out / cancelled
+  });
+  assert.deepEqual(
+    expandOccurrences(weekly).map((o) => o.date),
+    ["2026-06-07", "2026-06-14", "2026-06-28"],
+  );
+});
+
+test("a skipped (exdate) occurrence no longer causes a conflict", () => {
+  const residency = gig("2026-06-07", "22:00", "02:00", {
+    recurrence: { freq: "weekly", count: 8 },
+    exdates: ["2026-06-21"], // the 21st was split off into its own gig
+  });
+  // Would have clashed with the 2026-06-21 occurrence — but it's skipped now.
+  const oneOff = gig("2026-06-21", "23:00", "01:00");
+  assert.deepEqual(findConflicts(oneOff, [residency]), []);
 });
 
 test("findConflicts skips the gig's own id (editing in place is safe)", () => {

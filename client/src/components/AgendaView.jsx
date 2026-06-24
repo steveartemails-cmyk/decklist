@@ -37,7 +37,7 @@ export default function AgendaView({ gigs, onSelect }) {
                 <button
                   key={o.key}
                   type="button"
-                  onClick={() => onSelect(g)}
+                  onClick={() => onSelect({ ...g, _occurrenceDate: o.date })}
                   className={
                     "w-full flex items-center gap-3 rounded-lg border px-3 py-2 text-left " +
                     (conflict
